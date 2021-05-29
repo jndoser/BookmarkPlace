@@ -1,13 +1,13 @@
 package com.disislongg.bookmarkplace.ui
 
+import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Paint
+import android.graphics.Color
 import android.location.Location
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.renderscript.ScriptGroup
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
@@ -15,6 +15,7 @@ import android.view.WindowManager
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
@@ -24,17 +25,18 @@ import androidx.recyclerview.widget.RecyclerView
 import com.disislongg.bookmarkplace.R
 import com.disislongg.bookmarkplace.adapter.BookmarkInfoWindowAdapter
 import com.disislongg.bookmarkplace.adapter.BookmarkListAdapter
-
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
+import com.disislongg.bookmarkplace.asynctask.DirectionAsync
 import com.disislongg.bookmarkplace.databinding.ActivityMapsBinding
 import com.disislongg.bookmarkplace.viewmodel.MapsViewModel
+import com.google.android.gms.common.FirstPartyScopes
 import com.google.android.gms.common.GooglePlayServicesNotAvailableException
 import com.google.android.gms.common.GooglePlayServicesRepairableException
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.location.*
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.*
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.PhotoMetadata
@@ -46,15 +48,22 @@ import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.android.libraries.places.widget.Autocomplete
 import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.maps.android.PolyUtil
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.plus
+import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.lang.Exception
+import java.lang.StringBuilder
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.ArrayList
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
-    private lateinit var map: GoogleMap
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var binding: ActivityMapsBinding
     private lateinit var placesClient: PlacesClient
     private lateinit var mapsViewModel: MapsViewModel
@@ -76,6 +85,16 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         setupLocationClient()
         setupPlaceClient()
         setupNavigationDrawer()
+
+        val intent = intent
+        val dstLat = intent.getDoubleExtra("dstLat", 0.0)
+        val dstLng = intent.getDoubleExtra("dstLng", 0.0)
+        if(dstLat == 0.0 && dstLng == 0.0) {
+
+        } else {
+            val dst = LatLng(dstLat, dstLng)
+            navigation(dst)
+        }
     }
 
     /**
@@ -91,10 +110,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         map = googleMap
 
         setupMapListeners()
-
         setupViewModel()
         getCurrentLocation()
 
+        if(timesClick % 2 == 0) {
+            val result = map.setMapStyle(MapStyleOptions(resources.getString(
+                R.string.dark_theme_json
+            )))
+        }
     }
 
     private fun setupMapListeners() {
@@ -113,7 +136,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun setupPlaceClient() {
-        Places.initialize(applicationContext, "AIzaSyAk8hMWLwJRN3pXDztLS9ppO48E0YQZLjA")
+        Places.initialize(applicationContext, "AIzaSyCuv-w8wBooyFod6Xv9VDp-3VX8D3AA_hk")
         placesClient = Places.createClient(this)
     }
 
@@ -135,6 +158,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         private const val TAG = "MapsActivity"
         private const val AUTOCOMPLETE_REQUEST_CODE = 2
         private var timesClick = 1
+        lateinit var fusedLocationClient: FusedLocationProviderClient
+        lateinit var map: GoogleMap
+        var polyline_array:ArrayList<String> = ArrayList()
     }
 
     private fun getCurrentLocation() {
@@ -472,4 +498,28 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             else -> return super.onOptionsItemSelected(item)
         }
     }
+
+    fun navigation(dstLatLng: LatLng) {
+        val url = "https://maps.googleapis.com/maps/api/directions/json?origin=14.441619505710758,%20109.01459628236806&destination=14.444005498346867,%20109.01816278623009&key=AIzaSyAZDfXCjtoqVbxV_NBb3yTmixrnAUPcHpE"
+
+     if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+
+        }
+        fusedLocationClient.lastLocation.addOnSuccessListener {
+            val urls = "https://maps.googleapis.com/maps/api/directions/json?" +
+                    "origin=${it.latitude},${it.longitude}" +
+                    "&destination=${dstLatLng.latitude},${dstLatLng.longitude}" +
+                    "&key=AIzaSyCuv-w8wBooyFod6Xv9VDp-3VX8D3AA_hk"
+            val async = DirectionAsync()
+            async.execute(urls)
+        }
+        }
+
 }

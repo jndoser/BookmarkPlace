@@ -1,10 +1,12 @@
 package com.disislongg.bookmarkplace.ui
 
+import android.Manifest
 import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.os.PersistableBundle
@@ -15,15 +17,29 @@ import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.disislongg.bookmarkplace.R
+import com.disislongg.bookmarkplace.asynctask.GetDirectionsData
 import com.disislongg.bookmarkplace.util.ImageUtils
 import com.disislongg.bookmarkplace.viewmodel.BookmarkDetailsViewModel
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.maps.android.PolyUtil
+import org.json.JSONObject
+import java.io.BufferedReader
 import java.io.File
+import java.io.InputStreamReader
+import java.lang.StringBuilder
+import java.net.HttpURLConnection
+import java.net.URL
 import java.net.URLEncoder
+import java.util.*
+import kotlin.collections.ArrayList
 
 class BookmarkDetailsActivity: AppCompatActivity(),
 PhotoOptionDialogFragment.PhotoOptionDialogListener {
@@ -37,6 +53,7 @@ PhotoOptionDialogFragment.PhotoOptionDialogListener {
     private lateinit var editTextAddress: EditText
     private lateinit var imageViewPlace: ImageView
     private lateinit var fab: FloatingActionButton
+    private lateinit var fabNavigation: FloatingActionButton
 
     private var photoFile: File? = null
 
@@ -51,6 +68,7 @@ PhotoOptionDialogFragment.PhotoOptionDialogListener {
         editTextAddress = findViewById<EditText>(R.id.editTextAddress)
         imageViewPlace = findViewById<ImageView>(R.id.imageViewPlace)
         fab = findViewById<FloatingActionButton>(R.id.fab)
+        fabNavigation = findViewById(R.id.fabNavigation)
 
 
         setupToolbar()
@@ -328,5 +346,15 @@ PhotoOptionDialogFragment.PhotoOptionDialogListener {
 
     private fun setupFab() {
         fab.setOnClickListener { sharePlace() }
+        fabNavigation.setOnClickListener { navigation() }
+    }
+
+    private fun navigation() {
+        val bookmarkView = bookmarkDetailsView ?: return
+        val dstLatLng = LatLng(bookmarkView.latitude, bookmarkView.longitude)
+        val intent = Intent(this, MapsActivity::class.java)
+        intent.putExtra("dstLat", dstLatLng.latitude)
+        intent.putExtra("dstLng", dstLatLng.longitude)
+        startActivity(intent)
     }
 }
