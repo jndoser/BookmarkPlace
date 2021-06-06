@@ -19,9 +19,12 @@ class DirectionAsync: AsyncTask<String, Void, java.util.ArrayList<String>>() {
     }
 
     override fun doInBackground(vararg params: String?): java.util.ArrayList<String>? {
+        //Nhận đường dẫn api để lấy kết quả chỉ đường
         val url = URL(params[0])
+        //Mở kết nối httpURLConnection
         val httpURLConnection = url.openConnection() as HttpURLConnection
 
+        //Bắt đầu đọc dữ liệu mà api trả về và lưu vào string builder
         try {
             val bufferedReader = BufferedReader(
                 InputStreamReader(httpURLConnection.inputStream, "utf-8")
@@ -34,10 +37,15 @@ class DirectionAsync: AsyncTask<String, Void, java.util.ArrayList<String>>() {
             }
             Log.e("JSON RESULT", sb.toString())
 
+            //Xử lý dữ liệu api trả về
             val jsonObjects = JSONObject(sb.toString())
+            //Dữ liệu trả về có rất nhiều trường, ta chỉ cần lấy dữ liệu
+            //về các địa điểm nằm giữa đường đi giữa 2 điểm nguồn và đích
             val jsonArray = jsonObjects.getJSONArray("routes").getJSONObject(0)
                 .getJSONArray("legs").getJSONObject(0).getJSONArray("steps")
 
+            //Dữ liệu về các địa điểm sẽ được lưu vào list polyline để sau đó
+            //ta sẽ dùng nó để vẽ line trên google maps
             val count = jsonArray.length()
             var polyline_array = ArrayList<String>(count)
 
@@ -63,6 +71,8 @@ class DirectionAsync: AsyncTask<String, Void, java.util.ArrayList<String>>() {
     }
 
     override fun onPostExecute(result: java.util.ArrayList<String>?) {
+        //Lấy dữ liệu về các địa điểm cần phải đi qua chuyển sang dạng
+        //toạ độ và vẽ lên bản đồ
         if (result != null) {
             for(i in 0 until result.size) {
                 val option2 = PolylineOptions()

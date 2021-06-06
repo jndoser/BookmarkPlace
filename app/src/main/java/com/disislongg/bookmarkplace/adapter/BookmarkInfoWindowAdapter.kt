@@ -26,22 +26,7 @@ class BookmarkInfoWindowAdapter(val context: Activity):
     }
 
     override fun getInfoWindow(p0: Marker?): View? {
-        /*val titleView = window.findViewById<TextView>(R.id.title)
-        if (p0 != null) {
-            titleView.text = p0.title ?: ""
-        }
 
-        val phoneView = window.findViewById<TextView>(R.id.phone)
-        if (p0 != null) {
-            phoneView.text = p0.snippet ?: ""
-        }
-
-        val imageView = window.findViewById<ImageView>(R.id.photo)
-        if (p0 != null) {
-            imageView.setImageBitmap(p0.tag as Bitmap)
-        }
-
-        return window*/
         return null
     }
 
@@ -58,7 +43,6 @@ class BookmarkInfoWindowAdapter(val context: Activity):
 
         val imageView = contents.findViewById<ImageView>(R.id.photo)
         if (p0 != null) {
-            //imageView.setImageBitmap((p0.tag as MapsActivity.PlaceInfo).image)
             when(p0.tag) {
                 is MapsActivity.PlaceInfo -> {
                     imageView.setImageBitmap((p0.tag as MapsActivity.PlaceInfo).image)

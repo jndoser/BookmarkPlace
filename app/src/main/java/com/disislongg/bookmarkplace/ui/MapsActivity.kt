@@ -65,9 +65,17 @@ import java.util.ArrayList
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var binding: ActivityMapsBinding
+    //Sử dụng lớp PlacesClient để sử dụng Place API,
+    //nhằm lấy dữ liệu về các địa điểm có trên Google Maps
     private lateinit var placesClient: PlacesClient
+    //Lớp này đại diện cho dữ liệu hiển thị trên maps
+    //ở đây là các marker
     private lateinit var mapsViewModel: MapsViewModel
+    //Adapter hỗ trợ hiển thị các địa điểm người dùng đã lưu lên
+    //recyclerView của navigation bar
     private lateinit var bookmarkListAdapter: BookmarkListAdapter
+    //HashMap hỗ trợ lưu trữ lại các marker đã được người dùng
+    //lưu trữ
     private var markers = HashMap<Long, Marker>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,6 +94,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         setupPlaceClient()
         setupNavigationDrawer()
 
+
+        //Nhận intent từ activity detail của từng bookmark đã lưu trữ,
+        //nếu người dùng muốn chỉ đường đến địa điểm đã lưu thì ta nhận
+        //vị trí điểm đến sau đó gọi hàm chỉ đường ,
+        // nếu k nhận đc vị trí điểm đến thì bỏ qua
         val intent = intent
         val dstLat = intent.getDoubleExtra("dstLat", 0.0)
         val dstLng = intent.getDoubleExtra("dstLng", 0.0)
@@ -121,25 +134,43 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun setupMapListeners() {
+        //Set info window adapter để tuỳ biến lại nội dung hiển
+        //thị của info window
         map.setInfoWindowAdapter(BookmarkInfoWindowAdapter(this))
+        //Xử lý sự kiện khi người dùng click vào POI, tức là các địa
+        //điểm hiển thị trên google maps
+        //Khi người dùng click vào thì sẽ hiện info window lên
         map.setOnPoiClickListener {
             displayPoi(it)
         }
+        //Xử lý sự kiện khi người dùng click vào Info window, khi người dùng
+        //click vào info window thì sẽ lưu lại địa điểm đó vào sqlite db
         map.setOnInfoWindowClickListener { handleInfoWindowClick(it) }
+
+        //Xử lý sự kiện khi người dùng chọn vào fab tìm kiếm , thực hiện
+        //tìm kiếm và hiển thị địa điểm đó
         val fab = findViewById<FloatingActionButton>(R.id.fab)
         fab.setOnClickListener {
             searchAtCurrentLocation()
         }
+
+        //Nếu ng dùng ấn giữ lâu vào một vị trí chưa có tên trên bản đồ
+        //thì ta vẫn sẽ lưu lại địa điểm đó và cho người dùng tự điền thông
+        //tin về địa điểm
         map.setOnMapLongClickListener{ latLng ->
             newBookmark(latLng)
         }
     }
 
+    //Set up Place API để lấy vị trí các địa điểm
+    //trên Google Maps
     private fun setupPlaceClient() {
-        Places.initialize(applicationContext, "AIzaSyCuv-w8wBooyFod6Xv9VDp-3VX8D3AA_hk")
+        Places.initialize(applicationContext, "AIzaSyA-b9Bpa0V4NQxtyd1a_7K7PihnhJbQwC4")
         placesClient = Places.createClient(this)
     }
 
+    //Set up lớp FusedLocationClient dùng để lấy vị trí
+    //hiện tại của người dùng
     private fun setupLocationClient() {
         fusedLocationClient =
             LocationServices.getFusedLocationProviderClient(this)
@@ -199,12 +230,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    //Hàm hiển thị thông tin của POI bằng info window
     private fun displayPoi(pointOfInterest: PointOfInterest) {
         showProgress()
         displayPoiGetPlaceStep(pointOfInterest)
 
     }
 
+    //Lấy thông tin từ POI nhờ placeAPI
     private fun displayPoiGetPlaceStep(pointOfInterest: PointOfInterest) {
         val placeId = pointOfInterest.placeId
 
@@ -235,6 +268,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             }
     }
 
+    //Lấy hình ảnh của POI mà ng dùng chọn
     private fun displayPoiGetPhotoStep(place: Place) {
         val photoMetadata = place.photoMetadatas?.get(0)
 
@@ -268,6 +302,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             }
     }
 
+    //Hiển thị marker POI và hiện window info của POI đó
     private fun displayPoiDisplayStep(place: Place, photo:Bitmap?) {
         hideProgress()
         val marker = map.addMarker(MarkerOptions()
@@ -279,14 +314,24 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         marker?.showInfoWindow()
     }
 
+    //Set up view model, view model là lớp trung gian giữa view , ở đây
+    //là các marker có trên google maps và dữ liệu lưu trữ marker này trong
+    //database
     private fun setupViewModel() {
         mapsViewModel = ViewModelProviders.of(this).get(MapsViewModel::class.java)
         createBookmarkObserver()
     }
 
+    //Lớp này đại diện cho các địa điểm trên bản đồ mà
+    //người dùng chưa lưu
     class PlaceInfo(val place: Place? = null,
     val image: Bitmap? = null)
 
+    //Xử lý sự kiện khi người dùng chọn vào info window
+    //nếu là info window của địa điểm chưa được lưu thì ta
+    //sẽ lưu địa điêm đó, nếu là địa điểm đã lưu thì ta
+    //chuyển sang activity chi tiết của địa điểm đó để người dùng
+    //có thể xem chỉnh sửa
     private fun handleInfoWindowClick(marker: Marker) {
         when(marker.tag) {
             is MapsActivity.PlaceInfo -> {
@@ -311,6 +356,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     }
 
+    //Hàm thêm marker vào bản đồ
+    //đồng thời lưu nó vào hash map để
+    //hiển thị lên , cho biết nó là địa điểm
+    //mà ng dùng đã lưu
     private fun addPlaceMarker(
         bookmark: MapsViewModel.BookmarkView
     ): Marker? {
@@ -328,6 +377,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         return marker
     }
 
+    //Hàm hiển thị tất cả các vị trí mà người dùng đã lưu
+    //bằng marker đc định dạng riêng
     private fun displayAllBookmarks(
         bookmarks: List<MapsViewModel.BookmarkView>
     ) {
@@ -336,6 +387,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    //Hàm này sẽ cập nhật lại các marker khi
+    //người dùng thêm mới, chỉnh sửa hoặc xoá
+    //các bookmark đã lưu
     private fun createBookmarkObserver() {
         mapsViewModel.getBookmarkViews()?.observe(
             this,
@@ -350,12 +404,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         )
     }
 
+    //Chuyển người dùng đến activity chi tiết của bookmark
     private fun startBookmarkDetails(bookmarkId: Long) {
         val intent = Intent(this, BookmarkDetailsActivity::class.java)
         intent.putExtra(EXTRA_BOOKMARK_ID, bookmarkId)
         startActivity(intent)
     }
 
+    //Tạo toggle để hiện và tắt navigation bar bên phải màn hình,
+    //navigation bar này sẽ là nơi lưu trữ các địa điểm đã lưu
     private fun setupToolbar() {
         val drawerLayout: DrawerLayout = findViewById(R.id.drawerLayout)
         val toolbar: androidx.appcompat.widget.Toolbar? = findViewById(R.id.toolbar)
@@ -365,6 +422,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         toggle.syncState()
     }
 
+    //Sử dụng recyclerView để hiển thị các địa điểm đã lưu lên
+    //navigation bar
     private fun setupNavigationDrawer() {
         val bookmarkRecycleView = findViewById<RecyclerView>(R.id.bookmarkRecyclerView)
         val layoutManager = LinearLayoutManager(this)
@@ -373,6 +432,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         bookmarkRecycleView.adapter = bookmarkListAdapter
     }
 
+    //Hàm chuyển bản độ đến vị trí location
     private fun updateMapToLocation(location: Location) {
         val latLng = LatLng(location.latitude, location.longitude)
         map.animateCamera(
@@ -380,6 +440,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         )
     }
 
+    //Hàm chuyển bản đồ đến vị trí ng dùng đã bookmark
     fun moveToBookmark(bookmark: MapsViewModel.BookmarkView) {
         val drawerLayout = findViewById<DrawerLayout>(R.id.drawerLayout)
         drawerLayout.closeDrawer(GravityCompat.START)
@@ -392,6 +453,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         updateMapToLocation(location)
     }
 
+    //Hàm hỗ trợ tìm kiếm địa điểm trên google maps
     private fun searchAtCurrentLocation() {
         val placeFields = listOf(
             Place.Field.ID,
@@ -468,12 +530,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         enableUserInteraction()
     }
 
+
+    //Thêm menu để bật tắt chế độ ban đêm cho bản đồ
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         val inflater = menuInflater
         inflater.inflate(R.menu.menu_main, menu)
         return true
     }
 
+    //Xử lý sự kiện khi người dùng chọn thay đổi chủ đề của bản đồ
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when(item.itemId) {
             R.id.status_darktheme -> {
@@ -499,8 +564,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    //Hàm chỉ đường từ vị trí hiện tại đến vị trí mà ng dùng đã lưu
     fun navigation(dstLatLng: LatLng) {
-        val url = "https://maps.googleapis.com/maps/api/directions/json?origin=14.441619505710758,%20109.01459628236806&destination=14.444005498346867,%20109.01816278623009&key=AIzaSyAZDfXCjtoqVbxV_NBb3yTmixrnAUPcHpE"
+        val url = "https://maps.googleapis.com" +
+                "/maps/api/directions/json?" +
+                "origin=14.441619505710758,%20109.01459628236806" +
+                "&destination=14.444005498346867,%20109.01816278623009" +
+                "&key=AIzaSyA-b9Bpa0V4NQxtyd1a_7K7PihnhJbQwC4"
 
      if (ActivityCompat.checkSelfPermission(
                 this,
@@ -516,7 +586,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             val urls = "https://maps.googleapis.com/maps/api/directions/json?" +
                     "origin=${it.latitude},${it.longitude}" +
                     "&destination=${dstLatLng.latitude},${dstLatLng.longitude}" +
-                    "&key=AIzaSyCuv-w8wBooyFod6Xv9VDp-3VX8D3AA_hk"
+                    "&key=AIzaSyA-b9Bpa0V4NQxtyd1a_7K7PihnhJbQwC4"
             val async = DirectionAsync()
             async.execute(urls)
         }
